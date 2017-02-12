@@ -135,10 +135,10 @@ bedtools closest -D b -a $newbed/sorted_ctcf_chr22_peaks.bed \
     | sort -k8 | cut -f 8,10 | awk '($2<0) {print $0}' \
     > $newbed/upstream-CTCF
 
-cat $newbed/upstream-CTCF | awk '{print $1}' | uniq -c \
+awk '{print $1}' $newbed/upstream-CTCF | uniq -c \
     | awk '{print $2}' > $newbed/unique_upstream_CTCF 
 
-cat $newbed/downstream-CTCF | awk '{print $1}' | uniq -c \
+awk '{print $1}' $newbed/downstream-CTCF | uniq -c \
     | awk '{print $2}'> $newbed/unique_downstream_CTCF
 
 cat $newbed/unique_downstream_CTCF $newbed/unique_upstream_CTCF \
