@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/MOLB7621/problem-set-2.svg?branch=master)](https://travis-ci.org/MOLB7621/problem-set-2)
+[![Build Status](https://travis-ci.org/etiennedanis/problem-set-2.svg?branch=master)](https://travis-ci.org/etiennedanis/problem-set-2)
 
 # Problem Set 2
 
