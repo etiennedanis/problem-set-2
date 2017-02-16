@@ -8,7 +8,7 @@ problemset="$HOME/data/MOLB7621/problem-set-2"
 # the size of the largest overlap between CTCF and H3K4me3 locations.
 
 zcat $bed/encode.tfbs.chr22.bed.gz \
-    | grep -w 'CTCF' | sort -k2,2n \
+    | awk '($4 == "CTCF") {print $0}' | sort -k2,2n \
     > $newbed/CTCF_sorted.bed
 zcat $bed/encode.h3k4me3.hela.chr22.bed.gz \
     | cut -f1,2,3 | sort -k2,2n \
@@ -23,6 +23,8 @@ echo answer-1: $answer_1
 # of nucleotides 19,000,000 to 19,000,500 on chr22 of hg19 genome build. 
 # Report the GC content as a fraction (e.g., 0.50).
 
+#bedtools nuc instead of the approach I took
+
 fasta="$HOME/data/MOLB7621/data-sets/fasta"
 misc="$HOME/data/MOLB7621/data-sets/misc"
 
@@ -36,15 +38,35 @@ rm -f $newbed/1_line.bed
 
 # Then use getfasta to extract the sequence 
 # corresponding to the interval chr22 19000000 19000500
-answer_2=$(bedtools getfasta -fi $fasta/chr22_hg19.fa \
+answer_2_using_bedtools_getfasta=$(bedtools getfasta -fi $fasta/chr22_hg19.fa \
     -bed $newbed/oneline.bed -fo 500nt.fa 
     total_number=$(cat $problemset/500nt.fa \
     | grep -v '>' | tr -d '\n'| wc -c) 
     GC_number=$(cat $problemset/500nt.fa \
     | grep -v '>' | sed 's/T//g' | sed 's/A//g' \
     | tr -d '\n'|  wc -c) 
-    echo $GC_number/$total_number | bc -l)
-echo answer-2: $answer_2
+    echo "scale=6; x=$GC_number/$total_number; if (x<1) print 0;x" | bc)
+echo answer-2_using_bedtools_getfasta: $answer_2_using_bedtools_getfasta
+
+problemset2="$HOME/data/MOLB7621/problem-set-2/problem-set-2"
+
+# echo "chr22\t19000000\t19000500" > $newbed/oneline2.bed
+# answer_2_alternate=$(bedtools getfasta -fi $fasta/chr22_hg19.fa \
+#    -bed $newbed/oneline2.bed -fo 500nt_alternate.fa 
+#    total_number_alternate=$(cat $problemset2/500nt_alternate.fa \
+#    | grep -v '>' | tr -d '\n'| wc -c) 
+#    GC_number_alternate=$(cat $problemset2/500nt_alternate.fa \
+#    | grep -v '>' | sed 's/T//g' | sed 's/A//g' \
+#    | tr -d '\n'|  wc -c) 
+#    echo "scale=6; x=$GC_number_alternate/$total_number_alternate; if (x<1) print 0;x" | bc) 
+# echo answer-2_using_backslash_t: $answer_2_alternate
+
+# Question 2: Use bedtools nuc to get the nucleotide content of intervals
+# in a fasta file
+
+answer_2_using_bedtools_nuc=$(bedtools nuc -fi $fasta/chr22_hg19.fa \
+    -bed $newbed/oneline.bed | grep -v '^#' | cut -f5| head)
+echo answer-2_using_bedtools_nuc: $answer_2_using_bedtools_nuc
 
 # Question 3
 # Use BEDtools to identify the length of the CTCF ChIP-seq peak
@@ -52,8 +74,10 @@ echo answer-2: $answer_2
 
 bedtools="$HOME/data/MOLB7621/data-sets/bedtools"
 
-answer_3=$(bedtools merge -i $bedtools/ctcf.hela.chr22.bg.gz \
-    -d 0 -c 4 -o mean | sort -k4,4rn | awk '{print $3 -$2}' \
+answer_3=$(bedtools map -c 4 -o mean -a $bed/encode.tfbs.chr22.bed.gz \
+    -b $bedtools/ctcf.hela.chr22.bg.gz \
+    | awk '($4=="CTCF") {print $0}' \
+    | sort -k5,5rn | awk '{OFS="\t"} {print $3 - $2}' \
     | head -n1)
 echo answer-3: $answer_3
 
@@ -81,13 +105,22 @@ echo answer-4: $answer_4
 
 cat $genome/hg19.genome | grep chr22 \
     | awk 'BEGIN {OFS="\t"} {print $1,0,$2}' > $newbed/whole_chr22.bed
-answer_5=$(bedtools subtract -a $newbed/whole_chr22.bed \
+answer_5_bedtools_subtract=$(bedtools subtract -a $newbed/whole_chr22.bed \
     -b $bed/genes.hg19.bed.gz \
     | awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$3-$2}' \
     | sort -k4,4rn | head -n1 \
     | awk 'BEGIN {OFS=""} {print $1,":",$2,"-",$3}')  
     
-echo answer-5: $answer_5
+echo answer-5_with_bedtools_subtract: $answer_5_bedtools_subtract
+
+# Question 5: Alternative solution with bedtools complement
+
+answer_5_bedtools_complement=$(bedtools complement -i $bed/genes.hg19.bed.gz\
+    -g $genome/hg19.genome \
+    | awk '{OFS="\t"} ($1=="chr22"){print $0, $3-$2}'\
+    | sort -k4,4rn | awk '{print $1":"$2"-"$3}' | head -n1)
+
+echo answer-5_with_bedtools_complement: $answer_5_bedtools_complement
 
 # Question 6
 # Use one or more BEDtools that we haven't covered in class. Be creative.
@@ -135,10 +168,10 @@ bedtools closest -D b -a $newbed/sorted_ctcf_chr22_peaks.bed \
     | sort -k8 | cut -f 8,10 | awk '($2<0) {print $0}' \
     > $newbed/upstream-CTCF
 
-awk '{print $1}' $newbed/upstream-CTCF | uniq -c \
+awk '{print $1}' $newbed/upstream-CTCF | sort | uniq -c \
     | awk '{print $2}' > $newbed/unique_upstream_CTCF 
 
-awk '{print $1}' $newbed/downstream-CTCF | uniq -c \
+awk '{print $1}' $newbed/downstream-CTCF | sort | uniq -c \
     | awk '{print $2}'> $newbed/unique_downstream_CTCF
 
 cat $newbed/unique_downstream_CTCF $newbed/unique_upstream_CTCF \

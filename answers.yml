@@ -1,7 +1,9 @@
 answer-1: 1079
-answer-2: .38400000000000000000
-answer-3: 980
+answer-2_using_bedtools_getfasta: 0.384000
+answer-2_using_bedtools_nuc: 0.384000
+answer-3: 850
 answer-4: PRAME
-answer-5: chr22:0-16150259
+answer-5_with_bedtools_subtract: chr22:0-16150259
+answer-5_with_bedtools_complement: chr22:0-16150259
 answer-6: SELM
 answer-7: 110
